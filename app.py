@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import cv2
 import numpy as np
@@ -8,6 +9,7 @@ from collections import deque
 import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 # Page configuration
 st.set_page_config(
