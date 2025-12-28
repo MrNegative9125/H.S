@@ -76,7 +76,7 @@ st.markdown("""
 class ASLRecognizer:
     """Real-time ASL Recognition System"""
     
-    def __init__(self, model_path='asl_model_final.keras', class_names_path='class_names.npy'):
+    def __init__(self, model_path='asl_model_final.h5', class_names_path='class_names.npy'):
         """Initialize the recognizer with trained model"""
         self.model = None
         self.class_names = []
