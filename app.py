@@ -119,15 +119,47 @@ class ASLRecognizer:
     def load_model(self, model_path, class_names_path):
         """Load the trained Keras model and class names"""
         try:
-            # Load model with custom options for compatibility
-            self.model = keras.models.load_model(model_path, compile=True)
+            import os
+            
+            # Check if files exist
+            if not os.path.exists(model_path):
+                st.error(f"❌ Model file not found: '{model_path}'")
+                st.info("📁 Please upload your model file to the repository root")
+                return False
+            
+            if not os.path.exists(class_names_path):
+                st.error(f"❌ Class names file not found: '{class_names_path}'")
+                st.info("📁 Please upload your class_names.npy file to the repository root")
+                return False
+            
+            # Load model with compatibility settings
+            self.model = tf.keras.models.load_model(
+                model_path,
+                compile=False  # Don't compile to avoid optimizer issues
+            )
+            
+            # Recompile the model
+            self.model.compile(
+                optimizer='adam',
+                loss='sparse_categorical_crossentropy',
+                metrics=['accuracy']
+            )
+            
+            # Load class names
             self.class_names = np.load(class_names_path, allow_pickle=True).tolist()
+            
             return True
-        except FileNotFoundError:
-            st.error(f"❌ Model files not found. Please upload '{model_path}' and '{class_names_path}'")
-            return False
+            
         except Exception as e:
             st.error(f"❌ Error loading model: {str(e)}")
+            st.exception(e)
+            st.info("""
+            **Troubleshooting Tips:**
+            1. Make sure model file is in Keras format (.keras or .h5)
+            2. Verify files are in repository root
+            3. Check file names match exactly
+            4. Model should be saved with: `model.save('asl_model_final.keras')`
+            """)
             return False
     
     def preprocess_frame(self, frame):
@@ -331,10 +363,36 @@ def main():
         st.header("⚙️ Configuration")
         
         st.subheader("📁 Model Files")
-        model_path = st.text_input("Model Path", "asl_model_final.keras", 
-                                   help="Path to your trained Keras model file")
-        class_names_path = st.text_input("Class Names Path", "class_names.npy",
-                                         help="Path to class names numpy file")
+        
+        # Option to upload files
+        upload_mode = st.checkbox("Upload model files", value=False, 
+                                  help="Enable if model files are not in repository")
+        
+        if upload_mode:
+            model_file = st.file_uploader("Upload Model (.keras)", type=['keras', 'h5'])
+            class_names_file = st.file_uploader("Upload Class Names (.npy)", type=['npy'])
+            
+            # Save uploaded files temporarily
+            if model_file is not None:
+                with open("uploaded_model.keras", "wb") as f:
+                    f.write(model_file.getbuffer())
+                model_path = "uploaded_model.keras"
+                st.success("✅ Model uploaded")
+            else:
+                model_path = None
+                
+            if class_names_file is not None:
+                with open("uploaded_class_names.npy", "wb") as f:
+                    f.write(class_names_file.getbuffer())
+                class_names_path = "uploaded_class_names.npy"
+                st.success("✅ Class names uploaded")
+            else:
+                class_names_path = None
+        else:
+            model_path = st.text_input("Model Path", "asl_model_final.keras", 
+                                       help="Path to your trained Keras model file")
+            class_names_path = st.text_input("Class Names Path", "class_names.npy",
+                                             help="Path to class names numpy file")
         
         st.markdown("---")
         st.subheader("🎛️ Prediction Settings")
@@ -404,14 +462,22 @@ def main():
         st.info("💡 **Pro Tip**: Multiple photos with same sign improves accuracy through smoothing!")
     
     # Initialize recognizer in session state
-    if 'recognizer' not in st.session_state:
-        with st.spinner("🔄 Loading AI model..."):
-            st.session_state.recognizer = ASLRecognizer(model_path, class_names_path)
-            
-        if st.session_state.recognizer.model is not None:
-            st.success(f"✅ Model loaded successfully! Ready to recognize {len(st.session_state.recognizer.class_names)} ASL signs.")
+    if 'recognizer' not in st.session_state or st.sidebar.button("🔄 Reload Model"):
+        if upload_mode and (model_path is None or class_names_path is None):
+            st.warning("⚠️ Please upload both model and class names files")
+            st.stop()
+        
+        if model_path and class_names_path:
+            with st.spinner("🔄 Loading AI model..."):
+                st.session_state.recognizer = ASLRecognizer(model_path, class_names_path)
+                
+            if st.session_state.recognizer.model is not None:
+                st.success(f"✅ Model loaded successfully! Ready to recognize {len(st.session_state.recognizer.class_names)} ASL signs.")
+            else:
+                st.error("❌ Failed to load model. Please check the error messages above.")
+                st.stop()
         else:
-            st.error("❌ Failed to load model. Please check file paths and try again.")
+            st.warning("⚠️ Please provide model file paths")
             st.stop()
     
     recognizer = st.session_state.recognizer
