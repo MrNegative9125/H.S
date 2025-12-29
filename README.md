@@ -80,7 +80,7 @@ Evaluation Metric: Accuracy
 
 ⚙️ Installation & Setup
 1️⃣ Clone the Repository
-git clone https://github.com/MrNegative9125/H.S
+git clone https://github.com/MrNegative9125/Sign_Language_Recognition
 cd asl-hand-sign-recognition
 
 2️⃣ Create Virtual Environment (Recommended)
